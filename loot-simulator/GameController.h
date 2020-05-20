@@ -5,7 +5,10 @@
 
 #pragma once
 
+#include "GameTypes.h"
+
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -14,15 +17,16 @@ namespace LootSimulator {
 
 //===============================================================
 
-enum Option
+enum class OptionCategory : uint32_t
 {
-	SLAY_GOBLIN = 0,
-	SLAY_SKELETON,
-	SLAY_DRAGON,
+	SLAY_MONSTER = 0,
 	SLAY_RANDOM,
-	QUIT
+	QUIT,
+	NUM_OPTION_CATEGORIES
 };
-using UserSelection = std::pair<Option, int32_t>;
+
+// Selection, Count
+using UserSelection = std::pair<int32_t, int32_t>;
 
 class Game;
 class GameEvents;
@@ -36,19 +40,22 @@ public:
 	void Run();
 	void Initialize();
 	GameEvents& GetGameEvents();
-	const std::vector<std::string>& GetOptionsStrings() { return m_optionsStrings; }
+
+	const std::string& GetMonsterName(MonsterType type);
+	const std::string& GetTreasureName(TreasureType type);
+	const std::set<Monster>& GetMonsters();;
 
 private:
-	void UpdateOptionsStrings();
 	UserSelection GetMoveInput();
 	std::vector<std::string> TokenizeString(const std::string& input);
 	bool IsValidInput(const std::vector<std::string>& tokens);
 	void WaitForInput();
+	OptionCategory GetOptionCategoryForSelection(int32_t selection);
 
 private:
 	std::unique_ptr<Game> m_game;
 	std::unique_ptr<GameView> m_view;
-	std::vector<std::string> m_optionsStrings;
+	std::pair<int32_t, int32_t> m_optionSelectionRange;
 };
 
 //===============================================================

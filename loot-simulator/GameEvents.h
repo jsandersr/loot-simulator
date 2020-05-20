@@ -28,7 +28,7 @@ public:
 	MonsterSlainEvent& GetMonsterSlainEvent() { return m_monsterSlainEvent; }
 
 	// Called after slaying multiple monsters. The loot data is collected and sent out through here.
-	using LootDroppedEvent = observable::subject<void(const LootMap& lootBatch, int count)>;
+	using LootDroppedEvent = observable::subject<void(const LootSession& lootBatch)>;
 	LootDroppedEvent& GetLootDroppedEvent() { return m_lootDroppedEvent; }
 
 	// TODO: could add error codes instead.

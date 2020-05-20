@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -18,7 +19,7 @@ enum MonsterType {
 	NUM_MONSTER_TYPES
 };
 
-enum TreasureItem {
+enum TreasureType {
 	TREASURE_NONE = -1,
 	TREASURE_GOLD_PILE = 0,
 	TREASURE_RUSTY_SWORD,
@@ -32,24 +33,45 @@ enum TreasureItem {
 	NUM_TREASURE_ITEMS
 };
 
-// treasure item, count
-using TreasureMap = std::unordered_map<TreasureItem, int32_t>;
+// Treasure item, count.
+using TreasureMap = std::unordered_map<TreasureType, int32_t>;
 
-// monster to treasure dropped.
+// Monster to count of monster.
+using MonsterCountMap = std::unordered_map<MonsterType, int32_t>;
+
+// Monster to treasure dropped.
 using LootMap = std::unordered_map <MonsterType, TreasureMap>;
+
+struct LootSession {
+
+	// List of monster types involved in this loot session. Used to look up
+	// other data.
+	std::set<MonsterType> monsters;
+
+	// Records the counts of each monster slain during this session.
+	MonsterCountMap monsterCounts;
+
+	// Records the loot that drops for each monster.
+	LootMap lootMap;
+};
 
 struct Treasure
 {
 	//--------------------------
 	// Model data
 	// Indicates the type of item.
-	TreasureItem type = TREASURE_NONE;
+	TreasureType type = TREASURE_NONE;
 
 	// Display name for this item.
 	std::string name;
 
 	// Indicates how likely this item is to drop. 0.0f - 1.0f.
 	float dropRate = 0.0f;
+
+	friend bool operator<(const Treasure& l, const Treasure& r)
+	{
+		return l.type < r.type; // keep the same order
+	}
 };
 
 struct LootTable
@@ -86,6 +108,11 @@ struct Monster
 
 	// List of loot tables we can choose from.
 	std::vector<LootTable> tables;
+
+	friend bool operator<(const Monster& l, const Monster& r)
+	{
+		return l.type < r.type; // keep the same order
+	}
 };
 
 } // namespace LootSimulator

@@ -8,7 +8,6 @@
 int main()
 {
 	LootSimulator::GameController gc;
-	gc.Initialize();
 	gc.Run();
 
 	return 0;

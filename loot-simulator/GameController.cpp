@@ -19,49 +19,17 @@ namespace LootSimulator {
 
 //===============================================================
 
+	// We're not going to consider any more than this number of digits in a selection.
+	static const int32_t s_maxOptionDigits = 5;
 	static const int32_t s_maxInputs = 2;
-
-	// Selection is a single number
-	static const int32_t s_selectionInputMaxSize = 1;
-
-	// Min and max selectable option number.
-	static const std::pair<int32_t, int32_t> s_validSelectionRange = { 0, 5 };
-
-	static const int s_countInputMaxSize = 5;
 
 	// Min and Max number of monsters to slay.
 	static const std::pair<int32_t, int32_t> s_validCountRange = { 0, 99999 };
-
-	static const int32_t s_defaultNumMonsters = 1;
-
-	static const int32_t s_randomOption = 4;
-	static const int32_t s_quitOption = 5;
-
-	static const Option s_options[5]{ SLAY_GOBLIN , SLAY_SKELETON , SLAY_DRAGON , SLAY_RANDOM, QUIT };
-
-	static MonsterType ToMonsterType(Option option)
-	{
-		switch (option)
-		{
-		case SLAY_GOBLIN:
-			return GOBLIN;
-		case SLAY_SKELETON:
-			return SKELETON;
-		case SLAY_DRAGON:
-			return DRAGON;
-		case SLAY_RANDOM:
-		case QUIT:
-		default:
-			std::cout << "Invalid monter type";
-			return NUM_MONSTER_TYPES;
-		}
-	}
 
 GameController::GameController()
 	: m_game(std::make_unique<Game>())
 	, m_view(std::make_unique<GameView>(this))
 {
-	m_view->Initialize();
 }
 
 GameController::~GameController()
@@ -71,25 +39,34 @@ GameController::~GameController()
 
 void GameController::Run()
 {
-	m_game->LoadData();
+	if (!m_game->LoadData())
+	{
+		return;
+	}
+
+	Initialize();
 
 	bool done = false;
 	while (!done)
 	{
 		UserSelection selection = GetMoveInput();
-		Option option = selection.first;
+
+		// We need to figure out which category we selected.
+		OptionCategory optionCategory = GetOptionCategoryForSelection(selection.first);
+
 		int32_t count = selection.second;
 
-		if (selection.first == QUIT)
+		if (optionCategory == OptionCategory::QUIT)
 		{
 			done = true;
 		}
 		else
 		{
 			std::optional<MonsterType> type;
-			if (option != SLAY_RANDOM)
+			if (optionCategory != OptionCategory::SLAY_RANDOM)
 			{
-				type = ToMonsterType(option);
+
+				type  = static_cast<MonsterType>(selection.first - 1);
 			}
 
 			if (count == 1)
@@ -108,7 +85,11 @@ void GameController::Run()
 
 void GameController::Initialize()
 {
-	UpdateOptionsStrings();
+	const std::set<Monster>& monsters = m_game->GetMonsters();
+
+	m_optionSelectionRange = { 1, monsters.size()  + static_cast<int32_t>(OptionCategory::NUM_OPTION_CATEGORIES) - 1};
+
+	m_view->Initialize();
 }
 
 GameEvents& GameController::GetGameEvents()
@@ -116,33 +97,19 @@ GameEvents& GameController::GetGameEvents()
 	return m_game->GetGameEvents();
 }
 
-void GameController::UpdateOptionsStrings()
+const std::string& GameController::GetMonsterName(MonsterType type)
 {
-	m_optionsStrings.clear();
+	return m_game->GetMonsterName(type);
+}
 
-	for (auto option : s_options)
-	{
-		switch (option)
-		{
-		case SLAY_GOBLIN:
-			m_optionsStrings.push_back("1. Goblin");
-			break;
-		case SLAY_SKELETON:
-			m_optionsStrings.push_back("2. Skeleton");
-			break;
-		case SLAY_DRAGON:
-			m_optionsStrings.push_back("3. Dragon");
-			break;
-		case SLAY_RANDOM:
-			m_optionsStrings.push_back("4. Random");
-			break;
-		case QUIT:
-			m_optionsStrings.push_back("5. Quit");
-			break;
-		default:
-			break;
-		}
-	}
+const std::string& GameController::GetTreasureName(TreasureType type)
+{
+	return m_game->GetTreasureName(type);
+}
+
+const std::set<LootSimulator::Monster>& GameController::GetMonsters()
+{
+	return m_game->GetMonsters();
 }
 
 UserSelection GameController::GetMoveInput()
@@ -170,7 +137,7 @@ UserSelection GameController::GetMoveInput()
 
 	// Always default to slaying at least one monster if option not specified.
 	int count = inputList.size() == 2 ? std::stoi(inputList[1]) : 1;
-	return { s_options[selection - 1] , count };
+	return { selection , count };
 }
 
 std::vector<std::string> GameController::TokenizeString(const std::string& str)
@@ -200,25 +167,16 @@ bool GameController::IsValidInput(const std::vector<std::string>& tokens)
 	}
 
 	const std::string& firstToken = tokens[0];
-	if (firstToken.size() > s_countInputMaxSize)
-	{
-		return false;
-	}
 
-	int selectionNum = std::stoi(firstToken);
-	bool isInputValid = selectionNum >= s_validSelectionRange.first
-		&& selectionNum <= s_validSelectionRange.second;
+	int selectionNum = std::stoi(firstToken.substr(0, s_maxOptionDigits));
+	bool isInputValid = selectionNum >= m_optionSelectionRange.first
+		&& selectionNum <= m_optionSelectionRange.second;
 
 	// Second param is optional.
 	if (tokens.size() == 2)
 	{
 		const std::string& secondToken = tokens[1];
-		if (secondToken.size() > s_countInputMaxSize)
-		{
-			return false;
-		}
-
-		int32_t numToSlay = std::stoi(secondToken);
+		int32_t numToSlay = std::stoi(secondToken.substr(0, s_maxOptionDigits));
 		isInputValid &= numToSlay >= s_validCountRange.first
 			&& numToSlay <= s_validCountRange.second;
 	}
@@ -231,6 +189,17 @@ void GameController::WaitForInput()
 {
 	m_view->PrintBackToMenuPrompt();
 	std::cin.ignore(std::numeric_limits <std::streamsize>::max(), '\n');
+}
+
+OptionCategory GameController::GetOptionCategoryForSelection(int32_t selection)
+{
+	int numMonsters = m_game->GetMonsters().size();
+	if (selection < numMonsters)
+	{
+		return OptionCategory::SLAY_MONSTER;
+	}
+	
+	return static_cast<OptionCategory>(selection - numMonsters);
 }
 
 //===============================================================

@@ -8,85 +8,13 @@
 #include "GameController.h"
 #include "GameEvents.h"
 
+#include <algorithm>
 #include <iostream>
 
 namespace LootSimulator {
 
 //===============================================================
 
-
-static std::string ItemTypeToString(TreasureItem itemType)
-{
-	switch (itemType)
-	{
-	case LootSimulator::TREASURE_NONE:
-		return "Nothing";
-	case LootSimulator::TREASURE_GOLD_PILE:
-		return "pile of gold";
-	case LootSimulator::TREASURE_RUSTY_SWORD:
-		return "Rusty Sword";
-	case LootSimulator::TREASURE_SHARP_SWORD:
-		"Sharp Sword";
-	case LootSimulator::TREASURE_GODLY_SWORD:
-		return "Godly Sword";
-	case LootSimulator::TREASURE_SMALL_SHIELD:
-		return "Small Shield";
-	case LootSimulator::TREASURE_HEATER_SHIELD:
-		return "Heater Sheidl";
-	case LootSimulator::TREASURE_KITE_SHIELD:
-		return "Kite Shield";
-	case LootSimulator::TREASURE_REGENERATION_RING:
-		return "Regeneration Ring";
-	case LootSimulator::TREASURE_CURSED_RING:
-		return "Cursed Ring";
-
-		// fallthrough
-	case LootSimulator::NUM_TREASURE_ITEMS:
-	default:
-		return std::string();
-	}
-}
-
-static std::string MonsterTypeToString(MonsterType monsterType)
-{
-	switch (monsterType)
-	{
-	case LootSimulator::GOBLIN:
-		return "Goblin";
-	case LootSimulator::SKELETON:
-		return "Skeleton";
-	case LootSimulator::DRAGON:
-		return "Dragon";
-	case LootSimulator::NUM_MONSTER_TYPES:
-	default:
-		return std::string();
-	}
-}
-
-static void PrintTreasureItem(const std::pair<TreasureItem, int>& itemSummary)
-{
-	std::cout << "\tLoot: " << ItemTypeToString(itemSummary.first) << "\n";
-	std::cout << "\tCount: " << itemSummary.second;
-	std::cout << "\n\n";
-}
-
-static void PrintTreasureCollection(const TreasureMap& treasureMap)
-{
-	for (const std::pair<TreasureItem, int32_t>& item : treasureMap)
-	{
-		PrintTreasureItem(item);
-	}
-}
-
-static void PrintLootSummary(const LootMap& monsterSummary)
-{
-	for (const std::pair<MonsterType, TreasureMap>& monsterToTreasureMap : monsterSummary)
-	{
-		std::cout << "Monster: " << MonsterTypeToString(monsterToTreasureMap.first) << "\n";
-		PrintTreasureCollection(monsterToTreasureMap.second);
-		std::cout << "\n\n---------------------------------------------------------\n\n";
-	}
-}
 
 GameView::GameView(GameController* gameController)
 	: m_controller(gameController)
@@ -115,12 +43,19 @@ void GameView::Initialize()
 		std::cout << "You've slain a " << monsterName << "!";
 	});
 
-	e.GetLootDroppedEvent().subscribe([this](const LootMap& lootMap, int count)
+	e.GetLootDroppedEvent().subscribe([this](const LootSession& lootSession)
 	{
-		std::cout << "\n\nYou just finished slaying " << count << " monster(s)!\n";
+		int32_t monsterTotal = std::accumulate(std::cbegin(lootSession.monsterCounts),
+			std::cend(lootSession.monsterCounts), 0,
+			[](int value, const std::pair<MonsterType, int32_t>& counts)
+		{
+			return value + counts.second;
+		});
+
+		std::cout << "\n\nYou just finished slaying " << monsterTotal << " monster(s)!\n";
 		std::cout << "Here is all the loot that dropped!\n\n";
 
-		PrintLootSummary(lootMap);
+		PrintLootSummary(lootSession, monsterTotal);
 	});
 }
 
@@ -141,11 +76,32 @@ void GameView::PrintGamePrompt()
 		" with all the carnage."
 		"\n\n";
 
-	const std::vector<std::string>& options = m_controller->GetOptionsStrings();
-	for (const auto& option : options)
+	uint32_t optionNum = 1;
+	uint32_t numOptionsCategories = static_cast<uint32_t>(OptionCategory::NUM_OPTION_CATEGORIES);
+	for (uint32_t i = 0; i < numOptionsCategories; ++i)
 	{
-		std::cout << option;
-		std::cout << "\n";
+		OptionCategory optionCategory = static_cast<OptionCategory>(i);
+		switch (optionCategory)
+		{
+		case OptionCategory::SLAY_MONSTER:
+		{
+			const std::set<Monster>& monsters = m_controller->GetMonsters();
+			for (const auto& monster : monsters)
+			{
+				 std::cout << optionNum++ << ". " << monster.name << "\n";
+			}
+		}
+		break;
+		case OptionCategory::SLAY_RANDOM:
+			std::cout << optionNum++ << ". " << "Random" << "\n";
+			break;
+		case OptionCategory::QUIT:
+			std::cout << optionNum++ << ". " << "Quit" << "\n";
+			break;
+		default:
+			std::cout << "Unsupported option category. optionCategory=" << i;
+			break;
+		}
 	}
 	std::cout << "\n";
 }
@@ -160,6 +116,36 @@ void GameView::PrintBackToMenuPrompt()
 {
 	std::cout << "\n";
 	std::cout << "Press any key to go back to menu!";
+}
+
+void GameView::PrintTreasureItem(const std::pair<TreasureType, int>& itemSummary, int32_t totalMonsterCount)
+{
+	int32_t totalItemCount = itemSummary.second;
+	float percentOfTotal = static_cast<float>(totalItemCount) / static_cast<float>(totalMonsterCount) * 100;
+
+	std::cout << "\tLoot: " << m_controller->GetTreasureName(itemSummary.first) << "\n";
+	std::cout << "\tCount: " << itemSummary.second << "(" << percentOfTotal << "%)";
+	std::cout << "\n\n";
+}
+
+void GameView::PrintTreasureCollection(const TreasureMap& treasureMap, int32_t totalMonsterCount)
+{
+	for (const std::pair<TreasureType, int32_t>& item : treasureMap)
+	{
+		PrintTreasureItem(item, totalMonsterCount);
+	}
+}
+
+void GameView::PrintLootSummary(const LootSession& lootSession, int32_t totalMonsterCount)
+{
+	for (MonsterType type : lootSession.monsters)
+	{
+		std::cout << "Monster: " << m_controller->GetMonsterName(type) << "\n";
+		std::cout << "Count: " << lootSession.monsterCounts.at(type) << "\n";
+
+		PrintTreasureCollection(lootSession.lootMap.at(type), totalMonsterCount);
+		std::cout << "\n\n---------------------------------------------------------\n\n";
+	}
 }
 
 //===============================================================

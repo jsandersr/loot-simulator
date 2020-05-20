@@ -19,12 +19,12 @@ NLOHMANN_JSON_SERIALIZE_ENUM(MonsterType,
 {
 	{ GOBLIN,   "goblin"   },
 	{ SKELETON, "skeleton" },
-	{ DRAGON,   "dragon"   }
+	{ DRAGON,   "dragon"   },
 });
 
 //TODO: This could be generated via a script,
 // It only needs to exist in the same namespace as the enum
-NLOHMANN_JSON_SERIALIZE_ENUM(TreasureItem,
+NLOHMANN_JSON_SERIALIZE_ENUM(TreasureType,
 {
 	{ TREASURE_NONE,              "none"             },
 	{ TREASURE_GOLD_PILE,         "goldPile"         },
@@ -160,14 +160,14 @@ Game::Game()
 {
 }
 
-void Game::LoadData()
+bool Game::LoadData()
 {
 	// All of our data is defined here.
 	std::ifstream fileStream(s_monsterData);
 	if (!fileStream.is_open())
 	{
 		LOG_DEBUG("Could not open file. file=" + s_monsterData);
-		return;
+		return false;
 	}
 
 	using json = nlohmann::json;
@@ -175,15 +175,27 @@ void Game::LoadData()
 	fileStream >> monsterJsonData;
 
 	uint32_t numMonsterTypes = monsterJsonData["numMonsterTypes"];
-	m_monstersTemplates.reserve(numMonsterTypes);
 
 	for (const auto& monsterJson: monsterJsonData["monsters"])
 	{
-		m_monstersTemplates.emplace_back(monsterJson.get<Monster>());
+		m_monsterData.insert(monsterJson.get<Monster>());
+	}
+
+	for (const auto& monster : m_monsterData)
+	{
+		for (const auto& table : monster.tables)
+		{
+			for (const auto& treasure : table.treasures)
+			{
+				m_treasureData.insert(treasure);
+			}
+		}
 	}
 
 	m_isDataLoaded = true;
 	m_events->GetLoadingCompleteEvent().notify();
+
+	return m_isDataLoaded;
 }
 
 void Game::SlayMonster(std::optional<MonsterType> type)
@@ -194,9 +206,14 @@ void Game::SlayMonster(std::optional<MonsterType> type)
 		LOG_DEBUG("Attempted to say monster with no data loaded.");
 		return;
 	}
+
+	LootSession lootSession;
+
 	Monster& m = type != std::nullopt
-		? GetMonsterForType(type.value())
-		: GetRandomMonster();
+		? CreateMonsterForType(type.value())
+		: CreateRandomMonster();
+
+	lootSession.monsterCounts[m.type]++;
 
 	m.RerollLoot();
 
@@ -211,68 +228,98 @@ void Game::SlayMonster(std::optional<MonsterType> type)
 	if (!lootNames.empty())
 	{
 		// Begin populating the results.
-		TreasureMap treasures = m_droppedLootMap[m.type];
+		TreasureMap treasures = lootSession.lootMap[m.type];
 		for (auto treasure : m.lootDrops)
 		{
 			// Insert into the map if it doesn't exist and increment its count.
 			treasures[treasure.type]++;
 		}
 
-		m_droppedLootMap[m.type] = treasures;
-		m_events->GetLootDroppedEvent().notify(m_droppedLootMap, 1);
+		lootSession.lootMap[m.type] = treasures;
+		lootSession.monsters.insert(m.type);
+		m_events->GetLootDroppedEvent().notify(lootSession);
 	}
-
 }
 
 void Game::SlayBatchOfMonsters(int32_t count, std::optional<MonsterType> type)
 {
+	if (!m_isDataLoaded)
+	{
+		LOG_DEBUG("Attempted to say monster with no data loaded.");
+		return;
+	}
+
 	m_droppedLootMap.clear();
+
+	LootSession lootSession;
 
 	// We're going to build a large pile of loot and report the results.
 	// This is simply so the console doesn't scroll forever on large numbers
 	// of monster slayings requested.
 
-	bool shouldRerollType = !type.has_value();
-	Monster m = !shouldRerollType
-		? GetMonsterForType(type.value())
-		: GetRandomMonster();
+	bool isRandom = !type.has_value();
+	Monster m = !isRandom
+		? CreateMonsterForType(type.value())
+		: CreateRandomMonster();
 
 	int remaining = count;
 	while (remaining--)
 	{
 		// If we weren't given a type then every monster will be random.
-		if (shouldRerollType)
+		if (isRandom)
 		{
-			m = GetRandomMonster();
+			m = CreateRandomMonster();
 		}
 
+		lootSession.monsterCounts[m.type]++;
 		m.RerollLoot();
 
 		// Begin populating the results.
-		TreasureMap treasures = m_droppedLootMap[m.type];
+		TreasureMap treasures = lootSession.lootMap[m.type];
 		for (auto treasure : m.lootDrops)
 		{
 			// Insert into the map if it doesn't exist and increment its count.
 			treasures[treasure.type]++;
 		}
 
-		m_droppedLootMap[m.type] = treasures;
+		lootSession.lootMap[m.type] = treasures;
+		lootSession.monsters.insert(m.type);
 	}
 
-	m_events->GetLootDroppedEvent().notify(m_droppedLootMap, count);
-
-	return;
+	m_events->GetLootDroppedEvent().notify(lootSession);
 }
 
-Monster Game::GetRandomMonster()
+const std::string& Game::GetMonsterName(MonsterType type)
+{
+	auto it = std::find_if(std::begin(m_monsterData), std::end(m_monsterData),
+		[type](const Monster& monster)
+	{
+		return monster.type == type;
+	});
+
+	return it->name;
+}
+
+const std::string& Game::GetTreasureName(TreasureType type)
+{
+	auto it = std::find_if(std::begin(m_treasureData), std::end(m_treasureData),
+		[type](const Treasure& treasure)
+		{
+			return treasure.type == type;
+		});
+
+	return it->name;
+}
+
+Monster Game::CreateRandomMonster()
 {
 	int32_t randomNumber = GetRandomInt(0, NUM_MONSTER_TYPES - 1);
-	return GetMonsterForType(static_cast<MonsterType>(randomNumber));
+	return CreateMonsterForType(static_cast<MonsterType>(randomNumber));
 }
 
-Monster Game::GetMonsterForType(MonsterType type)
+Monster Game::CreateMonsterForType(MonsterType type)
 {
-	auto it = std::find_if(std::begin(m_monstersTemplates), std::end(m_monstersTemplates),
+	auto it = std::find_if(std::begin(m_monsterData), std::end(m_monsterData),
 		[type](const Monster& monster)
 	{
 		return monster.type == type;
