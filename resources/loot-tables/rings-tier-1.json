@@ -1,0 +1,20 @@
+{
+    "numItems": 3,
+    "items": [
+        {
+            "type": "regenerationRing",
+            "name": "Regeneration Ring",
+            "dropRate": 0.05
+        },
+        {
+            "type": "cursedRing",
+            "name": "Cursed Ring",
+            "dropRate": 0.10
+        },
+        {
+            "type": "nothing",
+            "name": "",
+            "dropRate": 0.85
+        }
+    ]
+}

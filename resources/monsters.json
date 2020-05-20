@@ -1,0 +1,42 @@
+{
+    "numMonsterTypes": 3,
+    "monsters": [
+        {
+            "name": "Goblin",
+            "type": "goblin",
+            "tables": [
+                {
+                    "path": "resources/loot-tables/variety-tier-1.json"
+                }
+            ]
+        },
+        {
+            "name": "Skeleton",
+            "type": "skeleton",
+            "tables": [
+                {
+                    "path": "resources/loot-tables/shields-tier-1.json"
+                },
+                {
+                    "path": "resources/loot-tables/rings-tier-1.json"
+                }
+            ]
+        },
+        {
+            "name": "Dragon",
+            "type": "dragon",
+            "tables": [
+                {
+                    "path": "resources/loot-tables/weapons-top-tier.json",
+                    "dropRate": 0.5
+                },
+                {
+                    "path": "resources/loot-tables/shields-tier-1.json"
+                },
+                {
+                    "path": "resources/loot-tables/rings-tier-1.json"
+                }
+            ]
+        }
+    ]
+}

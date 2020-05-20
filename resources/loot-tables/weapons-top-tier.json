@@ -1,0 +1,10 @@
+{
+    "numItems": 1,
+    "items": [
+        {
+            "type": "godlySword",
+            "name": "Godly Sword",
+            "dropRate": 1.0
+        }
+    ]
+}

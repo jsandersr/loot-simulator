@@ -1,0 +1,20 @@
+{
+    "numItems": 3,
+    "items": [
+        {
+            "type": "goldPile",
+            "name": "Gold Pile",
+            "dropRate": 0.20
+        },
+        {
+            "type": "rustySword",
+            "name": "Rusty Sword",
+            "dropRate": 0.50
+        },
+        {
+            "type": "cursedRing",
+            "name": "Cursed Ring",
+            "dropRate": 0.30
+        }
+    ]
+}

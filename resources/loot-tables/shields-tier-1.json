@@ -1,0 +1,15 @@
+{
+    "numItems": 2,
+    "items": [
+        {
+            "type": "heaterShield",
+            "name": "Heater Shield",
+            "dropRate": 0.10
+        },
+        {
+            "type": "kiteShield",
+            "name": "Kite Shield",
+            "dropRate": 0.90
+        }
+    ]
+}
