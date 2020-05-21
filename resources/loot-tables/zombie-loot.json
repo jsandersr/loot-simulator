@@ -1,0 +1,30 @@
+{
+    "numItems": 5,
+    "items": [
+        {
+            "type": "smallShield",
+            "name": "Small Shield",
+            "dropRate": 0.28
+        },
+        {
+            "type": "sharpSword",
+            "name": "Sharp Sword",
+            "dropRate": 0.20
+        },
+        {
+            "type": "magicStaff",
+            "name": "Magic Staff",
+            "dropRate": 0.40
+        },
+        {
+            "type": "apple",
+            "name": "Apple",
+            "dropRate": 0.10
+        },
+        {
+            "type": "amuletOfDestruction",
+            "name": "Amulet of Destruction",
+            "dropRate": 0.02
+        }
+    ]
+}

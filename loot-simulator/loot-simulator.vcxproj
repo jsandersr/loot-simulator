@@ -84,6 +84,7 @@
     <ClInclude Include="GameEvents.h" />
     <ClInclude Include="GameTypes.h" />
     <ClInclude Include="GameView.h" />
+    <ClInclude Include="generated\EnumDataBindings.h" />
     <ClInclude Include="Log.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

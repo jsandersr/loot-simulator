@@ -37,6 +37,15 @@
                     "path": "resources/loot-tables/rings-tier-1.json"
                 }
             ]
+        },
+        {
+            "name": "Zombie",
+            "type": "zombie",
+            "tables": [
+                {
+                    "path": "resources/loot-tables/zombie-loot.json"
+                }
+            ]
         }
     ]
 }

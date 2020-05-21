@@ -15,28 +15,6 @@ namespace LootSimulator {
 
 //===============================================================
 
-NLOHMANN_JSON_SERIALIZE_ENUM(MonsterType,
-{
-	{ GOBLIN,   "goblin"   },
-	{ SKELETON, "skeleton" },
-	{ DRAGON,   "dragon"   },
-});
-
-//TODO: This could be generated via a script,
-// It only needs to exist in the same namespace as the enum
-NLOHMANN_JSON_SERIALIZE_ENUM(TreasureType,
-{
-	{ TREASURE_NONE,              "none"             },
-	{ TREASURE_GOLD_PILE,         "goldPile"         },
-	{ TREASURE_RUSTY_SWORD,       "rustySword"       },
-	{ TREASURE_SHARP_SWORD,       "sharpSword"       },
-	{ TREASURE_GODLY_SWORD,       "godlySword"       },
-	{ TREASURE_SMALL_SHIELD,      "smallShield"      },
-	{ TREASURE_HEATER_SHIELD,     "heaterShield"     },
-	{ TREASURE_KITE_SHIELD,       "kiteShield"       },
-	{ TREASURE_REGENERATION_RING, "regenerationRing" },
-	{ TREASURE_CURSED_RING,       "cursedRing"       }
-});
 
 static std::string GetRelativePath(const std::string& path)
 {
@@ -313,7 +291,7 @@ const std::string& Game::GetTreasureName(TreasureType type)
 
 Monster Game::CreateRandomMonster()
 {
-	int32_t randomNumber = GetRandomInt(0, NUM_MONSTER_TYPES - 1);
+	int32_t randomNumber = GetRandomInt(0, static_cast<int32_t>(MonsterType::NUM_TYPES) - 1);
 	return CreateMonsterForType(static_cast<MonsterType>(randomNumber));
 }
 
